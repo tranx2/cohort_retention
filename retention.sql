@@ -4,7 +4,7 @@
 ---135080 Records have NULL CustomerID
 ---406829 Records have CustomerID
 
-WITH online_retail AS 
+WITH online_sale AS 
 	(SELECT [InvoiceNo]
 		  ,[StockCode]
 		  ,[Description]
@@ -13,13 +13,13 @@ WITH online_retail AS
 		  ,[UnitPrice]
 		  ,[CustomerID]
 		  ,[Country]
-	  FROM [Online_Retail].[dbo].[online_retail]
+	  FROM [Online_Sale].[dbo].[online_sale]
 	  WHERE CustomerID IS NOT NULL),
 
 ---397884 Records with Quanitity and Unit Price
 quantity_unit_price AS
 	(SELECT *
-	FROM online_retail
+	FROM online_sale
 	WHERE Quantity > 0 AND UnitPrice > 0),
 
 ---Duplicate Check
@@ -31,14 +31,14 @@ dup_check AS
 ---392669 Clean Data
 ---5215 Duplicate Records 
 SELECT * 
-INTO #online_retail_main
+INTO #online_sale_main
 FROM dup_check
 WHERE dup_flag = 1;
 
 ---Clean Data
 ---BEGIN COHORT ANALYSIS
 SELECT *
-FROM #online_retail_main;
+FROM #online_sale_main;
 
 ---Unique Identifier(CustomerID)
 ---Initial Start Date(First Invoice Date)
@@ -48,7 +48,7 @@ SELECT CustomerID,
 	MIN(InvoiceDate) AS first_purchase_date, 
 	DATEFROMPARTS(YEAR(MIN(InvoiceDate)), MONTH(MIN(InvoiceDate)),1) AS cohort_date
 INTO #cohort
-FROM #online_retail_main
+FROM #online_sale_main 
 GROUP BY CustomerID;
 
 SELECT *
@@ -74,24 +74,24 @@ FROM
 		ON m.CustomerID = c.CustomerID) AS invoice_cohort) AS year_month_diff;
 ---Where CustomerID = 13093
 
----Save CSV for Tableau
+Save CSV for Tableau
 SELECT *
 FROM #cohort_retention;
 
----Pivot Data to see Cohort Table
+Pivot Data to see Cohort Table
 SELECT *
 INTO #cohort_pivot
 FROM
-	(SELECT DISTINCT(CustomerID),
+	(SELECT DISTINCT(Customer_ID),
 		cohort_date,
 		cohort_index
-	FROM #cohort_retention) AS tbl
-PIVOT(COUNT(CustomerID) for cohort_index IN 
+	FROM #cohort_rentention AS tbl
+PIVOT(COUNT(Customer_ID) for cohort_index IN
 	([1],[2],[3],[4],[5],[6],[7],[8],[9],[10],[11],[12],[13])) AS pivot_table;
 
 SELECT *
 FROM #cohort_pivot
-ORDER BY cohort_date
+ORDERED BY cohort_date
 
 SELECT cohort_date,
 	1.0*[1]/[1]*100 AS [1], 
@@ -108,4 +108,7 @@ SELECT cohort_date,
 	1.0*[12]/[1]*100 AS [12],
 	1.0*[13]/[1]*100 AS [13]
 FROM #cohort_pivot
-ORDER BY cohort_date;
+ORDERED BY cohort_date;
+
+
+
